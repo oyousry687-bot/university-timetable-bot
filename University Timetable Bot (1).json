@@ -1,0 +1,699 @@
+{
+  "name": "University Timetable Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 1. استقبال الطلب\nالطالب يبعت أكواده من **بوت تليجرام** أو من **صفحة الويب**.",
+        "height": 620,
+        "width": 480,
+        "color": 4
+      },
+      "id": "a162d2d0-8e95-4fdf-9aa3-38d6d8895e9d",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. قراءة شيت الكلية\nكل طلب بيقرا الشيت من جديد، فأي تعديل من الكلية يوصل للبوت فورًا.\n\nغيّر الرابط من node اسمها **Settings**.",
+        "height": 620,
+        "width": 900,
+        "color": 5
+      },
+      "id": "21598ea7-bd26-48b5-9a05-47e74c54a953",
+      "name": "Note 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        48,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. العقل بتاع المشروع\nتنضيف البيانات، البحث عن المواد، توليد كل الجداول، كشف التعارضات، وترشيح الأفضل.",
+        "height": 620,
+        "width": 1120,
+        "color": 6
+      },
+      "id": "12403334-6f0d-4bfe-b221-30efe768f135",
+      "name": "Note 5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        976,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. الرد على الطالب\nملخص في الشات وتقرير HTML كامل، أو صفحة ويب.",
+        "height": 800,
+        "width": 760,
+        "color": 3
+      },
+      "id": "c57cd769-8954-4eaa-a860-71d01e5d483c",
+      "name": "Note 7",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "f9db1283-d5fd-4f1f-a056-5410348bba78",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -400,
+        16
+      ],
+      "webhookId": "b7f0c6a2-3c1e-4e55-9a10-7d2f4c1a9e01",
+      "credentials": {
+        "telegramApi": {
+          "id": "2ATdTD3qy3qLuLMB",
+          "name": "Telegram account 3"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "path": "schedule",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c56997d9-451b-4e72-9550-bddebc90c6f1",
+      "name": "Web Page",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        224
+      ],
+      "webhookId": "c8a1d7b3-4d2f-4f66-8b21-8e3a5d2b0f12"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1b2c3d4-0000-4000-8000-000000000011",
+              "name": "sheetSource",
+              "value": "url",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-0000-4000-8000-000000000012",
+              "name": "sheetUrl",
+              "value": "https://docs.google.com/spreadsheets/d/1HUfXEUmG921EPazRam1AM7iDp_4VxLFSTMfVHj4-IbA/edit?usp=sharing",
+              "type": "string"
+            },
+            {
+              "id": "a1b2c3d4-0000-4000-8000-000000000013",
+              "name": "sheetPath",
+              "value": "/home/node/.n8n-files/courses.xlsx",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "f830cc77-d3a8-40f1-8d1c-fc7d67de1301",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// يحوّل رسالة الطالب (تليجرام أو صفحة الويب) لطلب موحّد\nconst j = $input.first().json;\nconst isTelegram = !!(j.message || j.update_id);\nconst toLatinDigits = s => String(s || '')\n  .replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x0660)\n  .replace(/[۰-۹]/g, d => d.charCodeAt(0) - 0x06F0);\n\nconst raw = isTelegram ? (j.message && j.message.text) || '' : (j.query && j.query.codes) || '';\nlet text = toLatinDigits(raw);\nconst upper = text.toUpperCase();\n\n// الأكواد: EEN101 / een 101 / MEN499 I / AR334(1) / BS104M\nconst codeRe = /\\b([A-Z]{2,4})[\\s-]*(\\d{3})([A-Z]{0,2})(\\(\\d\\))?(?:\\s+(I{1,2})(?![A-Z]))?(?:\\s*[:=]\\s*(\\d{1,2}))?/g;\nconst codes = [], hours = {};\nlet rest = upper, m;\nwhile ((m = codeRe.exec(upper))) {\n  const code = m[1] + m[2] + (m[3] || '') + (m[4] || '') + (m[5] || '');\n  if (!codes.includes(code)) codes.push(code);\n  if (m[6] !== undefined) hours[code] = +m[6];\n  rest = rest.replace(m[0], ' ');\n}\n\n// ساعات كل مادة وحدود التسجيل اللي الطالب كتبها\nconst query = j.query || {};\nObject.keys(query).forEach(k => {\n  if (/^h_/i.test(k) && /^\\d{1,2}$/.test(toLatinDigits(query[k]).trim())) hours[k.slice(2).toUpperCase()] = +toLatinDigits(query[k]).trim();\n});\nconst range = rest.match(/من\\s*(\\d{1,2})\\s*(?:الى|إلى|لـ|ل|-)\\s*(\\d{1,2})/);\nconst asNum = v => /^\\d{1,2}$/.test(toLatinDigits(v).trim()) ? +toLatinDigits(v).trim() : null;\nconst minHours = asNum(query.minHours) ?? (range ? +range[1] : null);\nconst maxHours = asNum(query.maxHours) ?? (range ? +range[2] : null);\n\n// القسم: بالرمز أو بالعربي\nlet track = String((j.query && j.query.track) || '').toUpperCase().trim();\nif (!track) {\n  const t = rest.match(/(?:^|[^A-Z0-9/])(ME|TE|COM|CE|AR|P)(?![A-Z0-9])/);\n  if (t) track = t[1];\n  else {\n    const ar = [[/ميكا/, 'ME'], [/اتصالات/, 'TE'], [/حاسب/, 'COM'], [/مدني/, 'CE'], [/عمار/, 'AR'], [/[اإ]عدادي/, 'P']];\n    for (const [re, v] of ar) if (re.test(text)) { track = v; break; }\n  }\n}\nif (!['ME', 'TE', 'COM', 'CE', 'AR', 'P'].includes(track)) track = '';\n\n// روابط المشاركة تتحول لروابط تحميل مباشر\nlet url = String(j.sheetUrl || '').trim(), g;\nif ((g = url.match(/docs\\.google\\.com\\/spreadsheets\\/d\\/([\\w-]+)/))) url = `https://docs.google.com/spreadsheets/d/${g[1]}/export?format=xlsx`;\nelse if ((g = url.match(/drive\\.google\\.com\\/file\\/d\\/([\\w-]+)/))) url = `https://drive.google.com/uc?export=download&id=${g[1]}`;\nelse if ((g = url.match(/github\\.com\\/([^/]+\\/[^/]+)\\/blob\\/(.+)/))) url = `https://raw.githubusercontent.com/${g[1]}/${g[2]}`;\n\n// رابط الفورم يتبني من العنوان اللي الطالب فاتح بيه، عشان يشتغل من الموبايل كمان\nconst hdr = j.headers || {}, host = hdr['x-forwarded-host'] || hdr.host;\nlet webhookUrl = j.webhookUrl || '';\nconst hook = webhookUrl.match(/^(https?):\\/\\/[^/]+(\\/.*)$/);\nif (host && hook) webhookUrl = `${String(hdr['x-forwarded-proto'] || hook[1]).split(',')[0].trim()}://${host}${hook[2]}`;\n\nconst command = /^\\/(start|help)/i.test(text.trim()) ? 'help' : codes.length ? 'run' : isTelegram ? 'help' : 'landing';\n\nreturn [{ json: {\n  channel: isTelegram ? 'telegram' : 'web',\n  chatId: isTelegram && j.message ? j.message.chat.id : null,\n  messageId: isTelegram && j.message ? j.message.message_id : null,\n  firstName: isTelegram && j.message && j.message.from ? j.message.from.first_name || '' : '',\n  webhookUrl,\n  rawText: String(raw).slice(0, 300),\n  gibberish: isTelegram && !!raw && !codes.length && !raw.trim().startsWith('/'),\n  codes: codes.slice(0, 12),\n  tooMany: codes.length > 12,\n  hours, minHours, maxHours,\n  track, command,\n  sheetSource: String(j.sheetSource || 'url').toLowerCase(),\n  sheetUrl: url,\n  sheetPath: j.sheetPath || '',\n} }];\n"
+      },
+      "id": "553aab01-5cd0-4633-9ab6-a23ec479959c",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-0000-4000-8000-000000000016",
+              "leftValue": "={{ $json.sheetSource }}",
+              "rightValue": "url",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e25e7b79-228e-4805-8b7a-0583ecb8f564",
+      "name": "Sheet Source",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.sheetUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "56ab4576-a785-4b61-92b8-343a0199a710",
+      "name": "Download Sheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        544,
+        16
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.sheetPath }}",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "id": "b5f3e9d7-aa2b-4b87-9dad-793e599847c5",
+      "name": "Read Sheet From Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        544,
+        224
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "range": "1"
+        }
+      },
+      "id": "7cb1593e-b7ad-430e-8ea6-5a5c85a6de76",
+      "name": "Extract Excel Rows",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        784,
+        128
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ينضّف شيت الجامعة ويحوّله لكتالوج مواد منظم\nconst req = $('Parse Request').first().json;\nconst items = $input.all().map(i => i.json);\nconst compact = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z]/g, '');\nconst WANT = { day: 'day', timefrom: 'from', timeto: 'to', course: 'course', sectionno: 'secNo', sectionname: 'sec', teachingmethod: 'method', building: 'building', hall: 'hall', instructorname: 'instructor' };\n\n// يدعم الحالتين: الهيدر متعرف عليه، أو لسه صف بيانات تحت عنوان الشيت\nlet rows = [];\nconst direct = items.length && Object.keys(items[0]).some(k => compact(k) === 'course');\nif (direct) {\n  rows = items.map(o => { const r = {}; for (const k in o) { const w = WANT[compact(k)]; if (w) r[w] = o[k]; } return r; });\n} else {\n  const hi = items.findIndex(o => { const v = Object.values(o).map(compact); return v.includes('course') && v.includes('day'); });\n  if (hi >= 0) {\n    const map = {};\n    for (const k in items[hi]) { const w = WANT[compact(items[hi][k])]; if (w) map[k] = w; }\n    rows = items.slice(hi + 1).map(o => { const r = {}; for (const k in o) if (map[k]) r[map[k]] = o[k]; return r; });\n  }\n}\n\nconst DAY = { saturday: 0, sunday: 1, monday: 2, tuesday: 3, wednesday: 4, thursday: 5, friday: 6 };\nconst KIND = { lec: 'LEC', tutorial: 'TUT', section: 'TUT', lab: 'LAB' };\nfunction minutes(v) {\n  if (v == null || v === '') return null;\n  if (v instanceof Date) return v.getUTCHours() * 60 + v.getUTCMinutes() + (v.getUTCSeconds() >= 30 ? 1 : 0);\n  if (typeof v === 'number' || /^\\d*\\.\\d+$/.test(String(v).trim())) { const f = Number(v) % 1; return Math.round(f * 1440); }\n  const s = String(v), m = s.match(/(\\d{1,2}):(\\d{2})(?::(\\d{2}))?(?:\\.\\d+)?\\s*(AM|PM)?/i);\n  if (!m) return null;\n  let h = +m[1]; const ap = (m[4] || '').toUpperCase();\n  if (ap === 'PM' && h < 12) h += 12; if (ap === 'AM' && h === 12) h = 0;\n  return h * 60 + +m[2] + (+(m[3] || 0) >= 30 ? 1 : 0);\n}\nconst space = s => String(s == null ? '' : s).replace(/[‎‏]/g, '').replace(/\\s+/g, ' ').trim();\nfunction fixHall(v) {\n  let s = space(v);\n  [['tلي معمY حا~ب', 'معمل حاسب آلي'], ['tصO', 'فصل'], ['معمt', 'معمل'], ['018 tمعم', 'معمل 018'], ['tمعم', 'معمل'], ['01 ةϋاϗ', 'قاعة 01'], ['025 Νمدر', 'مدرج 025'],\n   ['الحا~باΕ', 'الحاسبات'], ['ηبكاΕ', 'شبكات'], ['ال~ϥ', 'الألسن'], ['Pharma cology', 'Pharmacology'], ['Microbio logy', 'Microbiology'], ['Bioche mistry', 'Biochemistry']]\n    .forEach(([a, b]) => { s = s.split(a).join(b); });\n  return s.replace(/~/g, 'س').replace(/\\s*-\\s*([ab])$/, '-$1');\n}\nfunction fixBuilding(v) {\n  const s = space(v).replace(/~/g, 'س').replace('Engineerin g', 'Engineering').replace(/مبني/g, 'مبنى');\n  return s === 'مبنى كلية B الصيدلة' ? 'مبنى كلية الصيدلة B' : s;\n}\nfunction tracksOf(name) {\n  const body = name.toUpperCase().replace(/^(LTN|LT|TUN|TU|LABN|LAB)/, '').replace(/\\d+/g, ' ');\n  return [...new Set(body.split(/[^A-Z]+/).filter(t => ['ME', 'TE', 'COM', 'CE', 'AR', 'P'].includes(t)))];\n}\n\nconst courses = {}; let used = 0, skipped = 0;\nfor (const r of rows) {\n  const day = DAY[compact(r.day)], start = minutes(r.from), end = minutes(r.to), kind = KIND[compact(r.method)];\n  const parts = String(r.course || '').split('--');\n  if (day === undefined || start == null || end == null || end <= start || !kind || parts.length < 2) { skipped++; continue; }\n  const code = parts[0].replace(/\\s+/g, '').toUpperCase(), name = space(parts.slice(1).join('--'));\n  const c = courses[code] || (courses[code] = { code, name, activities: {} });\n  const list = c.activities[kind] || (c.activities[kind] = []);\n  const secName = space(r.sec) || `#${r.secNo}`;\n  let sec = list.find(s => s.name === secName);\n  if (!sec) { sec = { name: secName, tracks: tracksOf(secName), meetings: [], instructors: [] }; list.push(sec); }\n  const hall = fixHall(r.hall), building = fixBuilding(r.building);\n  if (!sec.meetings.some(x => x.day === day && x.start === start && x.end === end)) sec.meetings.push({ day, start, end, hall, building });\n  const who = space(r.instructor);\n  if (who && !sec.instructors.includes(who)) sec.instructors.push(who);\n  used++;\n}\nconst count = Object.keys(courses).length;\nif (!count) return [{ json: { ...req, status: 'sheet_error', sheetDetail: 'الشيت اتقرا لكن مفيهوش الأعمدة المتوقعة (Day, Time From, Course ...).' } }];\nreturn [{ json: { ...req, catalog: courses, sheetStats: { rows: used, skipped, courses: count } } }];\n"
+      },
+      "id": "487db360-6748-4285-8797-569f19c200ba",
+      "name": "Clean Sheet Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// لو الشيت ماتحمّلش، الطالب ياخد رد واضح بدل ما البوت يسكت\nconst req = $('Parse Request').first().json;\nconst e = $input.first().json.error;\nconst detail = typeof e === 'string' ? e : (e && e.message) || '';\nreturn [{ json: { ...req, status: 'sheet_error', sheetDetail: detail.slice(0, 200) } }];\n"
+      },
+      "id": "6d5c3d79-2f1d-45b3-a4bc-303521d19a43",
+      "name": "Sheet Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// يدوّر على الأكواد في الكتالوج ويحدد قسم الطالب والمجموعات المسموحة له\nconst r = $input.first().json;\nif (r.status) return [{ json: r }];\nconst cat = r.catalog, all = Object.keys(cat);\nconst courseList = all.sort().map(c => ({ code: c, name: cat[c].name }));\nconst base = { ...r, courseList };\ndelete base.catalog;\nif (r.command !== 'run') return [{ json: { ...base, status: r.command } }];\n\nfunction lev(a, b) {\n  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);\n  for (let j = 1; j <= b.length; j++) d[0][j] = j;\n  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)\n    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));\n  return d[a.length][b.length];\n}\nconst found = [], unknown = [], hours = {};\nconst take = (c, q) => {\n  if (!found.includes(c)) found.push(c);\n  const h = r.hours[c] !== undefined ? r.hours[c] : r.hours[q];\n  if (h !== undefined) hours[c] = h;\n};\nfor (const q of r.codes) {\n  if (cat[q]) { take(q, q); continue; }\n  const pre = all.filter(c => c.startsWith(q));\n  if (pre.length === 1) { take(pre[0], q); continue; }\n  const near = pre.length ? pre : all.map(c => [c, lev(q, c)]).filter(x => x[1] <= 2).sort((a, b) => a[1] - b[1]).slice(0, 3).map(x => x[0]);\n  unknown.push({ code: q, suggestions: near.map(c => ({ code: c, name: cat[c].name })) });\n}\nif (!found.length) return [{ json: { ...base, status: 'not_found', unknown } }];\n\n// استنتاج القسم من المجموعات المكتوبة في أسماء السكاشن\nconst tally = {};\nfor (const c of found) {\n  const ts = new Set();\n  Object.values(cat[c].activities).forEach(l => l.forEach(s => s.tracks.forEach(t => ts.add(t))));\n  ts.forEach(t => { tally[t] = (tally[t] || 0) + 1; });\n}\nconst max = Math.max(0, ...Object.values(tally));\nconst top = Object.keys(tally).filter(t => tally[t] === max);\nlet track = r.track, trackSource = 'user';\nif (!track && top.length === 1) { track = top[0]; trackSource = 'inferred'; }\nconst needTrack = !track && top.length > 1;\nconst { minHours: lo, maxHours: hi } = r;\nconst ask = error => [{ json: { ...base, status: 'need_hours', found, unknown, hours, track: track || '', trackOptions: needTrack ? top : [], hoursError: error || '' } }];\nconst hoursWord = n => n === 1 ? 'ساعة' : n === 2 ? 'ساعتين' : n <= 10 ? `${n} ساعات` : `${n} ساعة`;\nconst missing = found.filter(c => hours[c] === undefined);\nif (missing.length || lo == null || hi == null) return ask();\nif (lo > hi) return ask('الحد الأدنى لازم يكون أقل من الحد الأقصى أو يساويه.');\nif (needTrack) return r.channel === 'web' ? ask('اختار قسمك عشان نحدد المجموعات المناسبة.') : [{ json: { ...base, status: 'need_track', found, unknown, hours, trackOptions: top } }];\nconst total = found.reduce((a, c) => a + hours[c], 0);\nif (total < lo) return ask(`مجموع موادك ${hoursWord(total)}، والحد الأدنى ${hoursWord(lo)}. ناقصك ${hoursWord(lo - total)}، فضيف مادة أو راجع الساعات.`);\nconst sums = new Set([0]);\nfound.forEach(c => { [...sums].forEach(v => sums.add(v + hours[c])); });\nif (![...sums].some(v => v >= lo && v <= hi)) return ask(`مفيش مجموعة من موادك مجموعها بين ${lo} و${hi} ساعة. راجع الساعات أو غيّر المواد.`);\n\nconst KL = { LEC: 'محاضرة', TUT: 'سكشن', LAB: 'معمل' }, notes = [], reqs = [], fallback = new Set();\nfor (const c of found) for (const kind of ['LEC', 'TUT', 'LAB']) {\n  const secs = cat[c].activities[kind];\n  if (!secs) continue;\n  let open = track ? secs.filter(s => !s.tracks.length || s.tracks.includes(track)) : secs;\n  if (!open.length) { open = secs; fallback.add(c); }\n  reqs.push({ code: c, name: cat[c].name, kind, kindLabel: KL[kind], sections: open });\n}\nif (fallback.size) notes.push(`${[...fallback].join(' و ')}: مفيش مجموعات باسم قسم ${track} في بعض الأنشطة، فاتحسبت كل المجموعات المتاحة.`);\nconst byName = {};\nfound.forEach(c => { const k = cat[c].name.toLowerCase().replace(/[^a-z0-9]/g, ''); (byName[k] = byName[k] || []).push(c); });\nObject.values(byName).filter(v => v.length > 1).forEach(v => notes.push(`${v.join(' و ')} هما نفس المادة بكودين مختلفين، غالبًا محتاج واحد بس منهم.`));\nreturn [{ json: { ...base, status: 'ok', found, unknown, hours, track, trackSource, notes, reqs } }];\n"
+      },
+      "id": "7c62463c-a8fd-426b-ab1c-b901c175f116",
+      "name": "Find Courses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// يولّد كل الجداول الممكنة ويكشف التعارضات (بحث شامل مع قطع الفروع المتعارضة)\nconst r = $input.first().json;\nif (r.status !== 'ok') return [{ json: r }];\nconst W = 3, D = 7, DW = D * W, BITS = 30, STEP = 10;\nconst pop = x => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return (((x + (x >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24; };\n\n// السكاشن اللي في نفس الميعاد بالظبط بتتجمع في اختيار واحد\nlet reqs = r.reqs.map(q => {\n  const g = {};\n  q.sections.forEach(s => {\n    const k = s.meetings.map(m => `${m.day}|${m.start}|${m.end}`).sort().join(';');\n    (g[k] = g[k] || { meetings: s.meetings, sections: [] }).sections.push(s);\n  });\n  return { ...q, options: Object.values(g) };\n});\nlet base = Infinity;\nreqs.forEach(q => q.options.forEach(o => o.meetings.forEach(m => { base = Math.min(base, m.start); })));\nbase = Math.floor(base / STEP) * STEP;\nreqs.forEach(q => q.options.forEach(o => {\n  o.mask = new Int32Array(DW);\n  o.meetings.forEach(m => {\n    const a = Math.floor((m.start - base) / STEP), b = Math.min(W * BITS, Math.ceil((m.end - base) / STEP));\n    for (let i = a; i < b; i++) o.mask[m.day * W + Math.floor(i / BITS)] |= 1 << (i % BITS);\n  });\n}));\nconst clamp = x => Math.max(0, Math.min(100, x));\n\nfunction metrics(occ, off) {\n  let days = 0, gap = 0, total = 0, early = 0, late = 0, maxDay = 0, maxRun = 0, over = 0, heavy = 0, sumS = 0, sumE = 0, sig = 0;\n  for (let d = 0; d < D; d++) {\n    const p = off + d * W, a = occ[p], b = occ[p + 1], c = occ[p + 2];\n    if (!(a | b | c)) continue;\n    let first = -1, last = -1, n = 0, run = 0, best = 0;\n    for (let i = 0; i < W * BITS; i++) {\n      if (occ[p + Math.floor(i / BITS)] & (1 << (i % BITS))) { if (first < 0) first = i; last = i; n++; run++; if (run > best) best = run; } else run = 0;\n    }\n    const mins = n * STEP, s = base + first * STEP, e = base + (last + 1) * STEP;\n    days++; sig |= 1 << d; total += mins; gap += (last - first + 1 - n) * STEP; sumS += s; sumE += e;\n    if (s <= 540) early++; if (e >= 840) late++;\n    if (mins > maxDay) maxDay = mins; if (best * STEP > maxRun) maxRun = best * STEP;\n    over += Math.max(0, best * STEP - 200); heavy += Math.max(0, mins - 300);\n  }\n  const lb = Math.max(1, Math.ceil(total / 330));\n  const sDays = clamp(100 - (days - lb) * 22), sGaps = clamp(100 - gap / 6), sComfort = clamp(100 - (over + heavy) / 2.5);\n  const sTime = days ? clamp(100 - 60 * early / days - 40 * late / days) : 100;\n  const score = sDays * .35 + sGaps * .30 + sComfort * .20 + sTime * .15;\n  return { days, gap, total, early, late, maxDay, maxRun, avgStart: sumS / (days || 1), avgEnd: sumE / (days || 1), sig, sDays, sGaps, sComfort, sTime, score };\n}\n\nconst KEYS = {\n  best: m => -m.score,\n  days: m => m.days * 1e6 + m.gap * 100 - m.score,\n  gaps: m => m.gap * 1e4 + m.days * 1e3 - m.score,\n  late: m => -m.avgStart * 1000 - m.score,\n  finish: m => m.avgEnd * 1000 - m.score,\n  light: m => m.maxDay * 1000 - m.score,\n};\nfunction search(list, opts) {\n  const order = list.map((_, i) => i).sort((a, b) => list[a].options.length - list[b].options.length);\n  const n = list.length, occ = new Int32Array((n + 1) * DW), pick = new Array(n).fill(0);\n  const boards = {}; Object.keys(KEYS).forEach(k => { boards[k] = []; });\n  const used = list.map(q => new Uint8Array(q.options.length));\n  let valid = 0, nodes = 0, stop = false; const t0 = Date.now();\n  (function go(depth) {\n    if (stop) return;\n    if (depth === n) {\n      valid++;\n      if (opts.count) return;\n      for (let i = 0; i < n; i++) used[i][pick[i]] = 1;\n      const m = metrics(occ, n * DW); let copy = null;\n      for (const k in KEYS) {\n        const b = boards[k], v = KEYS[k](m);\n        if (b.length < 12 || v < b[b.length - 1].v) {\n          copy = copy || pick.slice();\n          let i = b.length; while (i > 0 && b[i - 1].v > v) i--;\n          b.splice(i, 0, { v, c: copy, m }); if (b.length > 12) b.pop();\n        }\n      }\n      return;\n    }\n    const idx = order[depth], o = list[idx].options, p = depth * DW, q = p + DW;\n    for (let x = 0; x < o.length && !stop; x++) {\n      if ((++nodes & 0xFFFF) === 0 && (nodes > opts.maxNodes || Date.now() - t0 > opts.maxMs)) { stop = true; return; }\n      const mk = o[x].mask; let ok = true;\n      for (let i = 0; i < DW; i++) { if (occ[p + i] & mk[i]) { ok = false; break; } occ[q + i] = occ[p + i] | mk[i]; }\n      if (!ok) continue;\n      pick[idx] = x; go(depth + 1);\n    }\n  })(0);\n  return { valid, boards, used, truncated: stop, ms: Date.now() - t0 };\n}\n\n// لو المواد أكتر من الحد الأقصى: نختار أفضل مجموعة في حدود الساعات\nconst H = r.hours, lo = r.minHours, hi = r.maxHours, sumH = l => l.reduce((a, c) => a + H[c], 0);\nconst requested = r.found.slice(), totalH = sumH(requested);\nlet found = requested, triedSets = 0;\nif (totalH > hi) {\n  const sets = [];\n  for (let b = 1; b < (1 << requested.length); b++) {\n    const l = requested.filter((_, i) => b & (1 << i)), t = sumH(l);\n    if (t >= lo && t <= hi) sets.push({ l, t });\n  }\n  sets.sort((a, b) => b.t - a.t || b.l.length - a.l.length);\n  const t0 = Date.now(); let best = null;\n  for (const x of sets) {\n    if (best && x.t < best.t) break;\n    if (Date.now() - t0 > 7000) break;\n    triedSets++;\n    const o = search(reqs.filter(q => x.l.includes(q.code)), { maxNodes: 2e6, maxMs: 500 });\n    if (o.valid) { const sc = o.boards.best[0].m.score; if (!best || sc > best.sc) best = { ...x, sc }; }\n  }\n  found = (best || sets[0]).l;\n  reqs = reqs.filter(q => found.includes(q.code));\n}\nconst nameOf = c => (r.reqs.find(q => q.code === c) || {}).name || c;\nconst credit = { total: totalH, selected: sumH(found), min: lo, max: hi, triedSets,\n  deferred: requested.filter(c => !found.includes(c)).map(c => ({ code: c, name: nameOf(c), hours: H[c] })) };\n\nconst possible = reqs.reduce((p, q) => p * q.options.length, 1);\nconst out = search(reqs, { maxNodes: 4e7, maxMs: 15000 });\n\n// تحليل التعارضات بين كل زوج من الأنشطة\nconst fmtOverlap = (a, b) => {\n  for (const x of a.meetings) for (const y of b.meetings)\n    if (x.day === y.day && x.start < y.end && y.start < x.end) return { day: x.day, start: Math.max(x.start, y.start), end: Math.min(x.end, y.end) };\n  return null;\n};\nconst pairs = [];\nfor (let i = 0; i < reqs.length; i++) for (let j = i + 1; j < reqs.length; j++) {\n  const A = reqs[i], B = reqs[j]; let clash = 0, total = 0, optClash = 0; const ex = [];\n  for (const a of A.options) for (const b of B.options) {\n    const w = a.sections.length * b.sections.length; total += w;\n    let hit = false;\n    for (let k = 0; k < DW; k++) if (a.mask[k] & b.mask[k]) { hit = true; break; }\n    if (hit) { clash += w; optClash++; const t = fmtOverlap(a, b); if (t) ex.push({ a: a.sections[0].name, b: b.sections[0].name, ...t }); }\n  }\n  if (clash) pairs.push({ a: { code: A.code, kind: A.kindLabel, options: A.options.length }, b: { code: B.code, kind: B.kindLabel, options: B.options.length }, clash, total, hard: clash === total, fixed: A.options.length === 1 || B.options.length === 1, examples: ex.slice(0, 3) });\n}\npairs.sort((x, y) => (y.hard - x.hard) || (y.fixed - x.fixed) || (y.clash / y.total - x.clash / x.total) || (y.clash - x.clash));\n\n// السكاشن اللي مستحيل تدخل أي جدول صالح\nconst excluded = [];\nif (out.valid && !out.truncated) reqs.forEach((q, i) => q.options.forEach((o, x) => {\n  if (!out.used[i][x]) excluded.push({ code: q.code, kind: q.kindLabel, sections: o.sections.map(s => s.name), meetings: o.meetings });\n}));\n\n// لو مفيش جدول سليم: أقل تعارض ممكن + أي مادة لو اتشالت تحل المشكلة\nlet relaxed = null, drops = [];\nif (!out.valid) {\n  const order = reqs.map((_, i) => i).sort((a, b) => reqs[a].options.length - reqs[b].options.length);\n  const n = reqs.length, occ = new Int32Array((n + 1) * DW), pick = new Array(n).fill(0);\n  let best = Infinity, bestPick = null, bestM = null, nodes = 0; const t0 = Date.now();\n  (function go(d, lost) {\n    if (lost > best || nodes > 8e6 || Date.now() - t0 > 8000) return;\n    if (d === n) {\n      const m = metrics(occ, n * DW);\n      if (lost < best || m.score > bestM.score) { best = lost; bestPick = pick.slice(); bestM = m; }\n      return;\n    }\n    const idx = order[d], p = d * DW, q = p + DW;\n    reqs[idx].options.forEach((o, x) => {\n      nodes++; let add = 0;\n      for (let i = 0; i < DW; i++) { add += pop(occ[p + i] & o.mask[i]); occ[q + i] = occ[p + i] | o.mask[i]; }\n      pick[idx] = x; go(d + 1, lost + add * STEP);\n    });\n  })(0, 0);\n  relaxed = bestPick && { c: bestPick, m: bestM, overlap: best };\n  drops = found.filter(code => sumH(found) - H[code] >= lo).map(code => {\n    const rest = reqs.filter(q => q.code !== code);\n    return { code, valid: rest.length ? search(rest, { count: true, maxNodes: 3e6, maxMs: 1500 }).valid : 0 };\n  }).filter(d => d.valid > 0).sort((a, b) => b.valid - a.valid);\n  if (!drops.length) {\n    const t1 = Date.now();\n    for (let i = 0; i < found.length; i++) for (let j = i + 1; j < found.length; j++) {\n      if (Date.now() - t1 > 4000) continue;\n      const pair = [found[i], found[j]];\n      if (sumH(found) - H[pair[0]] - H[pair[1]] < lo) continue;\n      const rest = reqs.filter(q => !pair.includes(q.code));\n      const valid = rest.length ? search(rest, { count: true, maxNodes: 1e6, maxMs: 400 }).valid : 0;\n      if (valid) drops.push({ code: pair.join(' + '), valid });\n    }\n    drops.sort((a, b) => b.valid - a.valid);\n  }\n}\n\nconst clean = reqs.map(q => ({ code: q.code, name: q.name, kind: q.kind, kindLabel: q.kindLabel, sectionCount: q.sections.length,\n  options: q.options.map(o => ({ meetings: o.meetings, sections: o.sections })) }));\nconst boards = {};\nObject.keys(out.boards).forEach(k => { boards[k] = out.boards[k].map(e => ({ c: e.c, m: e.m })); });\nconst res = { ...r, found, credit, reqs: clean, search: { possible, valid: out.valid, truncated: out.truncated, ms: out.ms }, boards, conflicts: { pairs, excluded }, relaxed, drops };\nreturn [{ json: res }];\n"
+      },
+      "id": "20edf1ae-11e7-4e17-bc32-7bbab797c2eb",
+      "name": "Generate Schedules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// يختار الجداول المختلفة فعلًا، يرشّح الأفضل، ويكتب سبب الترشيح\nconst r = $input.first().json;\nif (r.status !== 'ok') return [{ json: r }];\nconst DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];\nconst dur = t => { const h = Math.floor(t / 60), m = t % 60; return !t ? 'صفر' : [h ? (h === 1 ? 'ساعة' : h === 2 ? 'ساعتين' : `${h} ساعات`) : '', m ? `${m} دقيقة` : ''].filter(Boolean).join(' و'); };\nconst daysWord = n => n === 1 ? 'يوم واحد' : n === 2 ? 'يومين' : `${n} أيام`;\n\nfunction build(e, id, title, kindKey) {\n  const items = r.reqs.map((q, i) => {\n    const o = q.options[e.c[i]], s = o.sections[0];\n    return { code: q.code, name: q.name, kind: q.kind, kindLabel: q.kindLabel, section: s.name, alternatives: o.sections.slice(1).map(x => x.name),\n      instructors: [...new Set(o.sections.flatMap(x => x.instructors))], meetings: o.meetings };\n  });\n  const free = [0, 1, 2, 3, 4, 5].filter(d => !(e.m.sig & (1 << d)));\n  return { id, key: kindKey, title, m: e.m, score: Math.round(e.m.score), freeDays: free.map(d => DAYS[d]), badges: [], reasons: [], items };\n}\nconst OBJ = [\n  ['days', 'أقل أيام حضور', m => m.days, 'أقل أيام حضور'],\n  ['gaps', 'أقل فراغات', m => m.gap, 'أقل فراغات'],\n  ['late', 'بداية متأخرة', m => -m.avgStart, 'أتأخر بداية'],\n  ['finish', 'تخلص بدري', m => m.avgEnd, 'أبدر نهاية'],\n  ['light', 'أيام خفيفة', m => m.maxDay, 'أخف يوم'],\n];\nconst out = { ...r }; delete out.boards;\nconst schedules = [];\nif (r.search.valid) {\n  const b = r.boards, same = (a, c) => a.join() === c.join();\n  const best = build(b.best[0], 0, 'الجدول المرشح', 'best'); best.c = b.best[0].c; schedules.push(best);\n  for (const [k, title, val, badge] of OBJ) {\n    const lead = b[k][0], target = val(lead.m);\n    const holder = schedules.find(s => Math.abs(val(s.m) - target) < 1e-6);\n    if (holder) { holder.badges.push(badge); continue; }\n    if (schedules.length >= 5) continue;\n    const s = build(lead, schedules.length, title, k); s.c = lead.c; s.badges.push(badge); schedules.push(s);\n  }\n  for (const e of b.best) {\n    if (schedules.length >= 3) break;\n    if (schedules.some(s => same(s.c, e.c) || s.m.sig === e.m.sig && s.m.gap === e.m.gap)) continue;\n    const s = build(e, schedules.length, 'بديل قوي', 'alt'); s.c = e.c; schedules.push(s);\n  }\n  for (const e of b.best) {\n    if (schedules.length >= 3) break;\n    if (schedules.some(s => same(s.c, e.c))) continue;\n    const s = build(e, schedules.length, 'بديل قوي', 'alt'); s.c = e.c; schedules.push(s);\n  }\n  const minDays = b.days[0].m.days, minGap = b.gaps[0].m.gap;\n  schedules.forEach(s => {\n    const m = s.m, R = s.reasons;\n    R.push(`حضور ${daysWord(m.days)}${m.days === minDays ? '، وده أقل عدد ممكن لموادك' : ''}`);\n    if (s.freeDays.length) R.push(`إجازة ${s.freeDays.join(' و')}`);\n    R.push(m.gap ? `فراغ ${dur(m.gap)} في الأسبوع${m.gap === minGap ? '، وده أقل فراغ ممكن' : ''}` : 'مفيش ولا دقيقة فراغ بين المحاضرات');\n    R.push(`أطول وقت متواصل ${dur(m.maxRun)}، وأتقل يوم ${dur(m.maxDay)}`);\n    delete s.c;\n  });\n  const top = schedules[0], d = b.days[0].m;\n  if (top.m.days > d.days) top.tradeoff = `فيه جدول بـ ${daysWord(d.days)} بس، لكن فراغاته ${dur(d.gap)} وتقييمه ${Math.round(d.score)} من 100، فالمرشح أريح في المجمل.`;\n  out.minDays = minDays; out.minGap = minGap;\n} else if (r.relaxed) {\n  const s = build(r.relaxed, 0, 'أقل تعارض ممكن', 'relaxed'); s.score = null; s.overlap = r.relaxed.overlap;\n  const clashes = [];\n  s.items.forEach((a, i) => s.items.slice(i + 1).forEach(b => a.meetings.forEach(x => b.meetings.forEach(y => {\n    if (x.day === y.day && x.start < y.end && y.start < x.end) clashes.push({ a: `${a.code} ${a.kindLabel}`, b: `${b.code} ${b.kindLabel}`, day: DAYS[x.day], start: Math.max(x.start, y.start), end: Math.min(x.end, y.end) });\n  }))));\n  s.clashes = clashes; s.reasons.push(`إجمالي التعارض ${dur(r.relaxed.overlap)} في الأسبوع`);\n  schedules.push(s);\n}\nout.schedules = schedules; delete out.relaxed;\nreturn [{ json: out }];\n"
+      },
+      "id": "0c48272e-539c-4b7d-a3bc-cb218cf3008a",
+      "name": "Rank And Recommend",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// يبني رد تليجرام وتقرير HTML من نتيجة التحليل\nconst r = $input.first().json;\nconst DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];\nconst TRACK = { ME: 'ميكاترونكس', TE: 'اتصالات', COM: 'حاسبات', CE: 'مدني', AR: 'عمارة', P: 'إعدادي' };\nconst e = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst clock = t => { const h = Math.floor(t / 60), m = t % 60; return `${h % 12 || 12}:${String(m).padStart(2, '0')}${h >= 12 ? 'م' : 'ص'}`; };\nconst dur = t => { const h = Math.floor(t / 60), m = t % 60; return !t ? 'صفر' : [h ? (h === 1 ? 'ساعة' : h === 2 ? 'ساعتين' : `${h} ساعات`) : '', m ? `${m} دقيقة` : ''].filter(Boolean).join(' و'); };\nconst daysWord = n => n === 1 ? 'يوم واحد' : n === 2 ? 'يومين' : `${n} أيام`;\nconst num = n => Number(n).toLocaleString('en-US');\nconst ltr = s => `<bdi dir=\"ltr\">${e(s)}</bdi>`;\nconst trackName = t => t ? `${TRACK[t] || t} (${t})` : 'كل الأقسام';\nconst S = r.schedules || [], ok = r.status === 'ok', hasValid = ok && r.search.valid > 0;\nconst pairs = ok ? r.conflicts.pairs : [], excluded = ok ? r.conflicts.excluded : [];\nconst clashTotal = pairs.reduce((a, p) => a + p.clash, 0);\nconst hoursWord = n => n === 1 ? 'ساعة' : n === 2 ? 'ساعتين' : n <= 10 ? `${n} ساعات` : `${n} ساعة`;\nconst countWord = n => n === 1 ? 'جدول واحد' : `${num(n)} جدول`;\nconst pairText = p => `${p.a.code} ${p.a.kind} مع ${p.b.code} ${p.b.kind}`;\n\n/* ---------- تليجرام ---------- */\nfunction agenda(s) {\n  const rows = [];\n  s.items.forEach(i => i.meetings.forEach(m => rows.push({ ...m, i })));\n  rows.sort((a, b) => a.day - b.day || a.start - b.start);\n  let out = '', d = -1;\n  rows.forEach(x => {\n    if (x.day !== d) { d = x.day; out += `\\n<b>${DAYS[d]}</b>\\n`; }\n    out += `${clock(x.start)} إلى ${clock(x.end)}  <code>${e(x.i.code)}</code> ${x.i.kindLabel} ${e(x.i.section)}\\n   ${e(x.hall)}\\n`;\n  });\n  return out;\n}\nfunction telegram() {\n  const cmd = `<code>MEN101 EEN101 BSN101</code>`;\n  const help = `اكتب أكواد موادك في رسالة واحدة، وأنا هدور عليها في جدول الكلية وأطلعلك كذا جدول، وأرشحلك الأفضل، وأقولك على التعارضات.\\n\\nمثال:\\n${cmd}\\n\\nولو عايز تحدد قسمك اكتبه قبل الأكواد:\\n<code>ME MEN101 EEN101 BSN101</code>\\n\\nالأقسام: ${Object.keys(TRACK).map(k => `${k} ${TRACK[k]}`).join('، ')}`;\n  const unk = (r.unknown || []).map(u => `• <code>${e(u.code)}</code> مش موجود${u.suggestions.length ? `، يمكن تقصد: ${u.suggestions.map(x => `<code>${e(x.code)}</code>`).join(' أو ')}` : ''}`).join('\\n');\n  if (r.status === 'sheet_error') return `معرفتش أقرا شيت المواد دلوقتي. جرب تاني بعد شوية، ولو المشكلة استمرت بلّغ مسؤول البوت.`;\n  if (r.status === 'help') return `${r.firstName ? `أهلًا ${e(r.firstName)} 👋\\n` : ''}${r.gibberish ? 'ملقتش أكواد مواد في رسالتك.\\n\\n' : ''}${help}`;\n  if (r.status === 'need_hours') return `${r.hoursError ? `⚠️ ${e(r.hoursError)}\\n\\n` : ''}اكتب ساعات كل مادة بعد الكود، وحدود التسجيل بتاعتك. غيّر الأرقام وابعت:\\n\\n<code>${r.found.map(c => `${c}:${r.hours[c] !== undefined ? r.hours[c] : 3}`).join(' ')} من ${r.minHours ?? 12} ل ${r.maxHours ?? 18}</code>`;\n  if (r.status === 'not_found') return `ملقتش الأكواد دي في جدول الكلية:\\n${unk}\\n\\nراجع الكود وابعته تاني.`;\n  if (r.status === 'need_track') return `المواد دي ليها مجموعات مختلفة لكل قسم. انسخ السطر بتاع قسمك وابعته:\\n\\n${r.trackOptions.map(t => `${TRACK[t] || t}:\\n<code>${t} ${r.found.map(c => `${c}:${r.hours[c]}`).join(' ')} من ${r.minHours} ل ${r.maxHours}</code>`).join('\\n\\n')}`;\n  const b = S[0], head = `🎓 <b>${hasValid ? 'جدولك جاهز' : 'موادك فيها تعارض مالوش حل كامل'}</b>\\n📚 ${r.found.length} مواد، ${hoursWord(r.credit.selected)} معتمدة، قسم ${e(trackName(r.track))}${r.trackSource === 'inferred' ? ' (استنتجته من الأكواد)' : ''}\\n${r.credit.deferred.length ? `⏭ اتأجلت: ${r.credit.deferred.map(d => `<code>${e(d.code)}</code>`).join('، ')} عشان تفضل بين ${r.credit.min} و${r.credit.max} ساعة\\n` : ''}`;\n  let msg = head;\n  if (hasValid) {\n    msg += `🔎 راجعت ${num(r.search.possible)} احتمال، ولقيت ${r.search.truncated ? 'أكتر من ' : ''}${num(r.search.valid)} جدول من غير تعارض\\n\\n🏆 <b>الجدول المرشح: ${b.score} من 100</b>\\n${b.reasons.slice(0, 3).map(x => `• ${e(x)}`).join('\\n')}\\n${agenda(b)}`;\n    const alts = S.slice(1).map((s, i) => `${i + 2}. <b>${e(s.title)}</b>: ${daysWord(s.m.days)}، فراغ ${dur(s.m.gap)}، تقييم ${s.score}`).join('\\n');\n    if (alts) msg += `\\n🔁 <b>جداول تانية</b>\\n${alts}\\n`;\n    if (pairs.length) msg += `\\n⚠️ <b>التعارضات اللي اتفادتها</b>\\nلقيت ${num(clashTotal)} تعارض محتمل بين المجموعات، أهمها:\\n${pairs.slice(0, 3).map(p => `• ${e(pairText(p))}${p.examples[0] ? ` (${DAYS[p.examples[0].day]} ${clock(p.examples[0].start)})` : ''}`).join('\\n')}\\n`;\n    else msg += `\\n✅ مفيش أي تعارض بين موادك\\n`;\n  } else {\n    const hard = pairs.filter(p => p.hard);\n    msg += `\\n🔴 <b>مفيش جدول من غير تعارض</b>\\n${(hard.length ? hard : pairs).slice(0, 4).map(p => `• ${e(pairText(p))}${p.examples[0] ? `: ${DAYS[p.examples[0].day]} ${clock(p.examples[0].start)} إلى ${clock(p.examples[0].end)}` : ''}`).join('\\n')}\\n`;\n    msg += r.drops.length ? `\\n💡 <b>الحل</b>\\n${r.drops.slice(0, 3).map(d => `• لو شلت <code>${e(d.code)}</code> هيبقى عندك ${countWord(d.valid)} سليم`).join('\\n')}\\n` : `\\n💡 راجع المرشد الأكاديمي، لأن شيل مادة أو اتنين مش كفاية.\\n`;\n    if (b) msg += `\\n📌 <b>أقرب جدول ممكن</b> (فيه تعارض ${dur(b.overlap)} في الأسبوع)\\n${agenda(b)}`;\n  }\n  if (unk) msg += `\\n❓ ${unk}\\n`;\n  (r.notes || []).forEach(n => { msg += `\\nℹ️ ${e(n)}`; });\n  if (r.tooMany) msg += `\\nℹ️ حسبت أول 12 مادة بس.`;\n  msg += `\\n\\n📎 التقرير الكامل في الملف اللي جاي.`;\n  if (msg.length > 4000) {\n    msg = head + (hasValid ? `\\n🏆 <b>الجدول المرشح: ${b.score} من 100</b>\\n${b.reasons.map(x => `• ${e(x)}`).join('\\n')}\\n` : `\\n🔴 <b>مفيش جدول من غير تعارض</b>\\n`) + `\\n📎 الجدول كامل والتعارضات في الملف اللي جاي.`;\n  }\n  return msg;\n}\n\n/* ---------- صفحة HTML ---------- */\nconst PENS = ['#2563A8', '#0E8A7D', '#D9822B', '#7B55C7', '#D1495B', '#4C9A2A', '#B58900', '#3F6FD8', '#C2418C', '#00839B', '#8D6E3F', '#5A67A8'];\nconst penOf = {}; (r.found || []).forEach((c, i) => { penOf[c] = PENS[i % PENS.length]; });\nconst allMeet = S.flatMap(s => s.items.flatMap(i => i.meetings));\nconst T0 = allMeet.length ? Math.min(...allMeet.map(m => m.start)) : 540, T1 = allMeet.length ? Math.max(...allMeet.map(m => m.end)) : 890;\nconst PX = 1.5;\nfunction week(s) {\n  const rows = []; s.items.forEach(i => i.meetings.forEach(m => rows.push({ ...m, i })));\n  const ticks = []; for (let t = T0; t <= T1; t += 50) ticks.push(t);\n  const H = (T1 - T0) * PX;\n  const cols = [0, 1, 2, 3, 4, 5].map(d => {\n    const list = rows.filter(x => x.day === d).sort((a, b) => a.start - b.start), lanes = [];\n    list.forEach(x => { let l = lanes.findIndex(end => end <= x.start); if (l < 0) { l = lanes.length; lanes.push(0); } lanes[l] = x.end; x.lane = l; });\n    const n = lanes.length || 1;\n    const blocks = list.map(x => {\n      const clash = list.some(y => y !== x && y.start < x.end && x.start < y.end);\n      return `<article class=\"blk k-${x.i.kind}${clash ? ' clash' : ''}${n > 1 ? ' narrow' : ''}\" style=\"--pen:${penOf[x.i.code]};--tint:${penOf[x.i.code]}1F;top:${(x.start - T0) * PX}px;height:${(x.end - x.start) * PX - 3}px;right:calc(${x.lane * 100 / n}% + 2px);width:calc(${100 / n}% - 4px)\" title=\"${e(x.i.code)}: ${e(x.i.name)}\"><b>${ltr(x.i.name)}</b><span>${x.i.kindLabel} ${ltr(x.i.section)}</span><span class=\"hall\">${e(x.hall)}</span></article>`;\n    }).join('');\n    return `<div class=\"col${list.length ? '' : ' off'}\"><h4>${DAYS[d]}</h4><div class=\"lane\" style=\"height:${H}px\">${blocks}${list.length ? '' : '<em>إجازة</em>'}</div></div>`;\n  }).join('');\n  const axis = ticks.map(t => `<span style=\"top:${(t - T0) * PX}px\">${clock(t)}</span>`).join('');\n  return `<div class=\"week\"><div class=\"axis\"><h4>&nbsp;</h4><div class=\"ticks\" style=\"height:${H}px\">${axis}</div></div>${cols}</div>`;\n}\nfunction dayList(s) {\n  const rows = []; s.items.forEach(i => i.meetings.forEach(m => rows.push({ ...m, i })));\n  rows.sort((a, b) => a.day - b.day || a.start - b.start);\n  let html = '', d = -1;\n  rows.forEach(x => {\n    if (x.day !== d) { if (d >= 0) html += '</ul>'; d = x.day; html += `<h4>${DAYS[d]}</h4><ul>`; }\n    html += `<li style=\"--pen:${penOf[x.i.code]};--tint:${penOf[x.i.code]}1F\"><time>${clock(x.start)} إلى ${clock(x.end)}</time><b>${ltr(x.i.name)}</b> ${x.i.kindLabel} ${ltr(x.i.section)}<small>${e(x.hall)}</small></li>`;\n  });\n  return `<div class=\"agenda\">${html}</ul></div>`;\n}\nfunction table(s) {\n  return `<details class=\"more\"><summary>تفاصيل المجموعات والقاعات</summary><div class=\"tw\"><table><thead><tr><th>المادة</th><th>النوع</th><th>المجموعة</th><th>الميعاد</th><th>المكان</th><th>المحاضر</th></tr></thead><tbody>${s.items.map(i => `<tr><td><b>${ltr(i.code)}</b><small>${ltr(i.name)}</small></td><td>${i.kindLabel}</td><td>${ltr(i.section)}${i.alternatives.length ? `<small>أو في نفس الميعاد: ${i.alternatives.map(ltr).join('، ')}</small>` : ''}</td><td>${i.meetings.map(m => `${DAYS[m.day]} ${clock(m.start)} إلى ${clock(m.end)}`).join('<br>')}</td><td>${i.meetings.map(m => `${e(m.hall)}<small>${e(m.building)}</small>`).join('')}</td><td>${i.instructors.length ? i.instructors.map(ltr).join('<br>') : 'لسه ما اتحددش في الشيت'}</td></tr>`).join('')}</tbody></table></div></details>`;\n}\nfunction panel(s, i) {\n  const head = s.score == null ? `فيه تعارض ${dur(s.overlap)} في الأسبوع` : `التقييم ${s.score} من 100`;\n  const clashes = (s.clashes || []).map(c => `<li>${e(c.a)} مع ${e(c.b)}: ${c.day} من ${clock(c.start)} إلى ${clock(c.end)}</li>`).join('');\n  return `<section class=\"panel\" id=\"p${i}\"><p class=\"score\">${head}</p>${s.score == null ? '' : `<ul class=\"why\">${s.reasons.slice(0, 3).map(x => `<li>${e(x)}</li>`).join('')}</ul>`}${clashes ? `<ul class=\"why red\">${clashes}</ul>` : ''}<ul class=\"cr\">${[...new Set(s.items.map(x => x.code))].map(c => { const it = s.items.find(x => x.code === c); return `<li style=\"--pen:${penOf[c]};--tint:${penOf[c]}1F\"><span>${ltr(it.name)}</span><b>${hoursWord(r.hours[c])}</b></li>`; }).join('')}</ul>${week(s)}${dayList(s)}${table(s)}</section>`;\n}\nfunction conflictsBlock() {\n  if (!ok) return '';\n  if (!pairs.length) return `<section class=\"sec\"><h2>التعارضات</h2><p>مفيش أي تعارض بين موادك.</p></section>`;\n  const row = p => { const x = p.examples[0]; return `<li><b>${ltr(p.a.code)}</b> ${p.a.kind} مع <b>${ltr(p.b.code)}</b> ${p.b.kind}${p.hard ? ' <span class=\"hard\">تعارض حتمي</span>' : ''}${x ? `<small>${DAYS[x.day]} من ${clock(x.start)} إلى ${clock(x.end)}</small>` : ''}</li>`; };\n  const fix = !hasValid ? `<div class=\"fix\"><b>إزاي تحلها</b>${r.drops.length ? `<ul>${r.drops.slice(0, 3).map(d => `<li>لو شلت ${ltr(d.code)} هيبقى عندك ${countWord(d.valid)} من غير تعارض</li>`).join('')}</ul>` : '<p>شيل مادة أو مادتين مش كفاية. راجع المرشد الأكاديمي.</p>'}</div>` : '';\n  return `<section class=\"sec\"><h2>التعارضات</h2><p class=\"muted\">${hasValid ? 'الجداول اللي فوق خالية من التعارضات دي.' : 'المواعيد دي بتمنع أي جدول سليم.'}</p>${fix}<ul class=\"clashes\">${pairs.slice(0, 3).map(row).join('')}</ul>${pairs.length > 3 ? `<details class=\"more\"><summary>باقي التعارضات (${pairs.length - 3})</summary><ul class=\"clashes\">${pairs.slice(3).map(row).join('')}</ul></details>` : ''}</section>`;\n}\nconst keep = () => Object.keys(r.hours || {}).map(c => `<input type=\"hidden\" name=\"h_${e(c)}\" value=\"${e(r.hours[c])}\">`).join('') + (r.minHours != null ? `<input type=\"hidden\" name=\"minHours\" value=\"${r.minHours}\">` : '') + (r.maxHours != null ? `<input type=\"hidden\" name=\"maxHours\" value=\"${r.maxHours}\">` : '');\nfunction form(codes) {\n  if (!r.webhookUrl) return '';\n  const opts = ['', ...Object.keys(TRACK)].map(k => `<option value=\"${k}\"${k === (r.track || '') ? ' selected' : ''}>${k ? `${TRACK[k]} (${k})` : 'حدده من الأكواد'}</option>`).join('');\n  return `<form class=\"ask\" method=\"get\" action=\"${e(r.webhookUrl)}\"><div class=\"c\"><label for=\"codes\">أكواد المواد</label><textarea id=\"codes\" name=\"codes\" rows=\"1\" dir=\"ltr\" required placeholder=\"MEN101 EEN101 BSN101\">${e(codes || '')}</textarea></div><div><label for=\"track\">القسم</label><select id=\"track\" name=\"track\">${opts}</select></div><button>اعمل الجدول</button>${keep()}</form>`;\n}\nconst LOGO = 'data:image/webp;base64,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';\nconst LOGO_EL = '<div class=\"logo\" role=\"img\" aria-label=\"شعار الجامعة المصرية الروسية\"></div>';\nconst CSS = `\n:root{--logo:url(${LOGO});color-scheme:light;--ink:#1D2B36;--mute:#5F6F7C;--line:#DDE4E9;--bg:#F3F6F8;--brand:#1A2A6C;--brand2:#E9ECF8;--sun:#C8202F;--focus:#FFD166;--red:#C23B3B;--amber:#E08A25}\n*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}\nhtml{background:var(--bg)}body{position:relative;z-index:0;margin:0;color:var(--ink);font:16px/1.7 \"IBM Plex Sans Arabic\",\"Segoe UI\",Tahoma,\"DejaVu Sans\",sans-serif}\nbody::before{content:\"\";position:fixed;inset:0;z-index:-1;background:var(--logo) center 58%/min(62vw,500px) no-repeat;opacity:.09;pointer-events:none}\nheader{display:flex;align-items:center;gap:16px}.logo{flex:none;width:76px;height:76px;border-radius:10px;background:#fff var(--logo) center/62px no-repeat}\n.band{background:linear-gradient(120deg,#111C4E,#1A2A6C 55%,#27399A);color:#fff}.in,main{max-width:1080px;margin:auto;padding-inline:24px}.in{padding-block:30px 28px}main{padding-block:24px 48px}\nh1{font-size:30px;line-height:1.3;font-weight:700;margin:0}h2{font-size:18px;font-weight:700;margin:0 0 4px}p{margin:.3em 0}\nsmall{display:block;color:var(--mute);font-size:13px;line-height:1.5}bdi{unicode-bidi:isolate}.muted{color:var(--mute)}\n.lead{color:#D3DAF5;margin-top:4px}\n.ask{display:flex;gap:10px;align-items:flex-end;margin:20px 0 0}.ask div{display:flex;flex-direction:column;gap:4px}.ask .c{flex:1}\n.ask label{font-size:13px;color:#D3DAF5}.ask textarea,.ask select{height:46px;border:0;border-radius:7px;background:#fff;color:var(--ink);padding:9px 12px;font:inherit;width:100%;resize:none}\n.ask textarea{text-align:left}.ask select{width:180px}\n.ask button{height:46px;border:0;border-radius:7px;background:var(--sun);color:#fff;padding:0 22px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}\n:focus-visible{outline:2px solid var(--focus);outline-offset:2px}\n.rd{position:absolute;opacity:0;pointer-events:none}\n.tabs{display:flex;gap:8px;overflow-x:auto;padding:2px}\n.tabs label{padding:7px 16px;cursor:pointer;color:var(--mute);background:#fff;border:1px solid var(--line);border-radius:20px;white-space:nowrap;font-size:14.5px}\n.panel{display:none;padding-top:18px}\n.score{display:inline-block;background:var(--brand2);color:var(--brand);font-weight:700;font-size:15px;padding:3px 12px;border-radius:6px}\n.why{margin:10px 0 18px;padding:0 18px 0 0;font-size:15px}.why li::marker{color:var(--brand)}.why.red{color:var(--red)}\n.week{display:grid;grid-template-columns:54px repeat(6,minmax(0,1fr));background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:10px;overflow:hidden}\n.week h4{margin:0;padding:9px 0;text-align:center;font-size:14px;font-weight:700;background:var(--brand2);color:var(--brand)}\n.col{border-right:1px solid var(--line)}.ticks,.lane{position:relative}.ticks span{position:absolute;right:8px;font-size:11.5px;color:var(--mute);margin-top:3px;white-space:nowrap}\n.lane{background-image:repeating-linear-gradient(to bottom,#EDF1F4 0 1px,transparent 1px 75px)}\n.col.off h4{background:#F3F6F8;color:#8D9BA7;font-weight:500}.col.off em{display:none}\n.blk{position:absolute;overflow:hidden;background:linear-gradient(var(--tint),var(--tint)),#fff;border-right:4px solid var(--pen);border-radius:5px;padding:4px 7px;font-size:11.5px;line-height:1.35;margin-top:1px}\n.blk b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;line-height:1.3;font-weight:700;direction:ltr;text-align:right}.blk span{display:block;color:#42505C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.blk.clash{box-shadow:inset 0 0 0 1.5px var(--red)}.blk.narrow span{white-space:normal}\n.cr{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;padding:0}.cr li{display:flex;gap:8px;align-items:center;background:linear-gradient(var(--tint),var(--tint)),#fff;border-right:3px solid var(--pen);border-radius:5px;padding:3px 10px;font-size:13px}.cr b{white-space:nowrap}.err{background:#FBEDEC;color:#8E2A2A;border-radius:7px;padding:10px 14px;margin-bottom:14px}.agenda{display:none}.agenda h4{margin:16px 0 6px;font-size:15px;color:var(--brand)}.agenda ul{list-style:none;margin:0;padding:0}.agenda li{background:#fff;box-shadow:inset 0 0 0 100px var(--tint);border-right:4px solid var(--pen);border-radius:6px;padding:8px 12px;margin-bottom:5px;font-size:14px}.agenda time{display:block;color:#42505C;font-size:13px}\n.more{margin-top:14px}.more summary{cursor:pointer;color:var(--brand);font-weight:500;font-size:14.5px}\n.tw{overflow-x:auto;margin-top:8px;background:rgba(255,255,255,.8);border:1px solid var(--line);border-radius:10px}table{border-collapse:collapse;width:100%;font-size:14px}.tw table{min-width:780px}.tw th{text-align:right;color:var(--brand);background:var(--brand2);font-weight:700;padding:8px 10px}.tw td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}\n.sec{margin-top:26px;padding:18px 20px;background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:10px}\n.clashes{list-style:none;padding:0;margin:10px 0 0}.clashes li{padding:7px 12px;margin-bottom:6px;border-right:3px solid var(--amber);background:#FDF6EC;border-radius:5px;font-size:15px}.hard{color:var(--red);font-size:13px;font-weight:700;margin-right:6px}\n.fix{background:var(--brand2);border-radius:7px;padding:12px 16px;margin:12px 0}.fix ul{margin:4px 0 0;padding:0 18px 0 0}\n.msg{background:rgba(255,255,255,.8);border:1px solid var(--line);border-radius:10px;padding:14px 18px}.notes{color:var(--mute);font-size:14px;margin-top:14px}\n.catalog{columns:3 240px;column-gap:24px;font-size:13.5px;list-style:none;padding:0}.catalog li{break-inside:avoid;padding:2px 0}.catalog b{margin-left:6px}\nfooter{margin-top:22px;color:var(--mute);font-size:13px}\n@media(max-width:760px){.logo{width:58px;height:58px;background-size:46px}h1{font-size:25px}.in,main{padding-inline:16px}.ask{display:block}.ask div{margin-bottom:10px}.ask textarea{height:72px}.ask select,.ask button{width:100%}.week{display:none}.agenda{display:block}}\n@media print{.ask,.tabs,.more{display:none}*{print-color-adjust:exact;-webkit-print-color-adjust:exact}}\n`;\nfunction page(title, body, extra = '') {\n  return `<!DOCTYPE html><html lang=\"ar\" dir=\"rtl\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>${e(title)}</title><link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin><link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap\"><style>${CSS}${extra}</style></head><body><div class=\"band\"><div class=\"in\">${body.split('<!--/band-->')[0]}</div></div><main>${body.split('<!--/band-->')[1] || ''}</main></body></html>`;\n}\nfunction html() {\n  const codesVal = (r.codes || []).join(' ');\n  const catalog = (r.courseList || []);\n  const catBlock = catalog.length ? `<details><summary>كل المواد الموجودة في الشيت (${catalog.length})</summary><ul class=\"catalog\">${catalog.map(c => `<li><b>${ltr(c.code)}</b>${ltr(c.name)}</li>`).join('')}</ul></details>` : '';\n  const simple = (h, m) => page(h, `<header>${LOGO_EL}<div><h1>${e(h)}</h1></div></header>${form(codesVal)}<!--/band--><div class=\"msg\">${m}</div>${catBlock.replace(\"<details>\", \"<details class=\\\"more\\\">\")}`);\n  if (r.status === 'landing' || r.status === 'help') {\n    const rows = catalog.map(c => `<tr data-c=\"${e(c.code)}\"><td class=\"cd\">${ltr(c.code)}</td><td class=\"nm\">${ltr(c.name)}</td><td class=\"ac\"><button type=\"button\" class=\"add\">إضافة</button></td></tr>`).join('');\n    const extra = `.band{background:radial-gradient(ellipse at 50% 42%,#2E43AE 0,#1A2A6C 48%,#0F1943 100%)}.band .in{min-height:calc(100vh - 132px);min-height:calc(100svh - 132px);display:flex;align-items:center;justify-content:center;padding-block:36px}.home{width:100%;max-width:720px}.home header{flex-direction:column;text-align:center;gap:12px}.home .logo{width:84px;height:84px;background-size:70px;border-radius:14px}.home h1{font-size:40px}.home .lead{font-size:17px}.hero-ask{margin-top:28px}.bar{display:flex;align-items:center;gap:6px;background:#fff;border-radius:16px;padding:7px;box-shadow:0 14px 34px rgba(5,10,40,.45);border:2px solid transparent}.bar:focus-within{border-color:var(--focus)}.bar input{flex:1;min-width:0;height:54px;border:0;outline:0;background:none;color:var(--ink);font:inherit;font-size:19px;font-weight:500;letter-spacing:.02em;text-align:center;padding:0 12px}.bar input::placeholder{color:#94A1AC;font-weight:400}.bar button{flex:none;height:54px;border:0;border-radius:11px;background:var(--sun);color:#fff;padding:0 26px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer}.bar button:hover{background:#A91824}.opts{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;color:#D3DAF5;font-size:14px}.opts select{height:36px;border:1px solid rgba(255,255,255,.4);border-radius:18px;background:rgba(255,255,255,.1);color:#fff;padding:0 12px;font:inherit;font-size:14px}.opts option{color:var(--ink)}.picker{max-width:760px;margin:0 auto;background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:12px;overflow:hidden}.ph{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px}.ph h2{margin:0;white-space:nowrap}.ph small{margin-top:1px}#q{display:none;width:240px;height:38px;border:1px solid var(--line);border-radius:7px;padding:6px 11px;font:inherit;font-size:14px;background:#fff}.js #q{display:block}.scroll{max-height:440px;overflow:auto;border-top:1px solid var(--line)}.picker table{table-layout:fixed}.picker th{position:sticky;top:0;background:var(--brand2);color:var(--brand);text-align:right;padding:9px 16px;font-size:13.5px}.picker td{padding:8px 16px;border-top:1px solid #EDF1F4;font-size:14px}.cd{width:120px;font-weight:700}.picker th:first-child{width:120px}.ac,.picker th:last-child{width:96px;text-align:left}.add{display:none;border:1px solid var(--brand);background:none;color:var(--brand);border-radius:6px;padding:2px 11px;font:inherit;font-size:13px;cursor:pointer}.js .add{display:inline-block}tr.on{background:var(--brand2)}tr.on .add{background:var(--brand);color:#fff}@media(max-width:760px){.home h1{font-size:32px}.bar{display:block;padding:8px}.bar input{width:100%;font-size:17px}.bar button{width:100%;margin-top:6px}.opts{flex-wrap:wrap}.ph{display:block}#q{width:100%;margin-top:8px}.cd,.picker th:first-child{width:86px}.ac,.picker th:last-child{width:76px}.picker td,.picker th{padding-inline:10px}}`;\n    const script = `<script>(function(){document.documentElement.className='js';var t=document.getElementById('codes'),q=document.getElementById('q'),b=document.getElementById('list');function L(){return t.value.trim().split(/[\\\\s,،]+/).filter(Boolean)}function S(){var l=L().map(function(x){return x.toUpperCase()});b.querySelectorAll('tr').forEach(function(r){var o=l.indexOf(r.dataset.c)>-1;r.classList.toggle('on',o);r.querySelector('.add').textContent=o?'مضافة':'إضافة'})}b.addEventListener('click',function(e){var r=e.target.closest('tr');if(!r)return;var c=r.dataset.c,l=L().filter(function(x){return x.toUpperCase()!==c});if(l.length===L().length)l.push(c);t.value=l.join(' ');S()});t.addEventListener('input',S);q.addEventListener('input',function(){var v=q.value.trim().toLowerCase();b.querySelectorAll('tr').forEach(function(r){r.hidden=v&&r.textContent.toLowerCase().indexOf(v)<0})});S()})()</`+`script>`;\n    return page('اعمل جدولك', `<div class=\"home\"><header>${LOGO_EL}<div><h1>اعمل جدولك</h1><p class=\"lead\">اكتب أكواد موادك، وهنطلعلك أفضل جدول من غير تعارض.</p></div></header><form class=\"hero-ask\" method=\"get\" action=\"${e(r.webhookUrl)}\"><div class=\"bar\"><input id=\"codes\" name=\"codes\" dir=\"ltr\" required autocomplete=\"off\" autofocus aria-label=\"أكواد المواد\" placeholder=\"MEN101  EEN101  BSN101\"><button>التالي</button></div><div class=\"opts\"><label for=\"track\">القسم</label><select id=\"track\" name=\"track\">${['', ...Object.keys(TRACK)].map(k => `<option value=\"${k}\">${k ? `${TRACK[k]} (${k})` : 'حدده من الأكواد'}</option>`).join('')}</select></div></form></div><!--/band--><section class=\"picker\"><div class=\"ph\"><div><h2>المواد المتاحة</h2><small>${catalog.length} مادة في جدول الكلية</small></div><input id=\"q\" type=\"search\" placeholder=\"ابحث بالكود أو الاسم\" aria-label=\"ابحث في المواد\"></div><div class=\"scroll\"><table><thead><tr><th>الكود</th><th>اسم المادة</th><th></th></tr></thead><tbody id=\"list\">${rows}</tbody></table></div></section>${script}`, extra);\n  }\n  if (r.status === 'need_hours') {\n    const nameOf = c => (catalog.find(x => x.code === c) || {}).name || '';\n    const rows = r.found.map(c => `<tr><td class=\"cd\">${ltr(c)}</td><td>${ltr(nameOf(c))}</td><td class=\"hc\"><input class=\"hr\" type=\"number\" inputmode=\"numeric\" name=\"h_${e(c)}\" min=\"0\" max=\"12\" step=\"1\" required aria-label=\"ساعات ${e(c)}\" value=\"${r.hours[c] !== undefined ? r.hours[c] : ''}\"></td></tr>`).join('');\n    const opts = (r.trackOptions.length ? r.trackOptions : Object.keys(TRACK));\n    const trackField = r.trackOptions.length ? `<label>القسم<select name=\"track\" required><option value=\"\">اختار قسمك</option>${opts.map(k => `<option value=\"${k}\"${k === r.track ? ' selected' : ''}>${TRACK[k]} (${k})</option>`).join('')}</select></label>` : `<input type=\"hidden\" name=\"track\" value=\"${e(r.track)}\">`;\n    const unk = (r.unknown || []).map(u => `<p>${ltr(u.code)} مش موجود في الشيت${u.suggestions.length ? `، يمكن تقصد ${u.suggestions.map(x => ltr(x.code)).join(' أو ')}` : ''}.</p>`).join('');\n    const extra = `.home{text-align:center}.home header{flex-direction:column;gap:10px}.hp{max-width:680px;margin:0 auto;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:12px;padding:20px}.hp table{margin-bottom:18px}.hp th{text-align:right;color:var(--brand);background:var(--brand2);padding:8px 12px;font-size:13.5px}.hp td{padding:8px 12px;border-top:1px solid #EDF1F4;font-size:14.5px}.cd{width:110px;font-weight:700}.hc{width:96px}.hp input[type=number],.hp select{width:100%;height:40px;border:1px solid #C9D1DE;border-radius:7px;background:#fff;color:var(--ink);text-align:center;font:inherit}.rg{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}.rg label{flex:1;min-width:120px;display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--mute)}.go{width:100%;height:50px;margin-top:16px;border:0;border-radius:9px;background:var(--sun);color:#fff;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer}.back{display:block;text-align:center;margin-top:12px;color:var(--brand);font-size:14px}.tot{display:none;margin:0 0 14px;font-weight:700;color:var(--brand)}.js .tot{display:block}@media(max-width:560px){.hp{padding:12px}.hp th,.hp td{padding-inline:8px}.cd{width:82px}.hc{width:72px}}`;\n    const script = `<script>(function(){document.documentElement.className='js';var I=[].slice.call(document.querySelectorAll('.hr')),o=document.getElementById('sum');function U(){o.textContent=I.reduce(function(a,x){return a+(parseInt(x.value,10)||0)},0)}I.forEach(function(x){x.addEventListener('input',U)});U()})()</`+`script>`;\n    return page('ساعات المواد', `<div class=\"home\"><header>${LOGO_EL}<div><h1>اكتب ساعات موادك</h1><p class=\"lead\">اكتب الساعات المعتمدة لكل مادة، وحدد عايز تسجل كام ساعة.</p></div></header></div><!--/band--><form class=\"hp\" method=\"get\" action=\"${e(r.webhookUrl)}\"><input type=\"hidden\" name=\"codes\" value=\"${e(r.found.join(' '))}\">${r.hoursError ? `<div class=\"err\">${e(r.hoursError)}</div>` : ''}${unk ? `<div class=\"err\">${unk}</div>` : ''}<table><thead><tr><th>الكود</th><th>المادة</th><th>الساعات</th></tr></thead><tbody>${rows}</tbody></table><p class=\"tot\">إجمالي الساعات: <span id=\"sum\">0</span></p><div class=\"rg\"><label>أقل عدد ساعات<input type=\"number\" inputmode=\"numeric\" name=\"minHours\" min=\"0\" max=\"40\" required value=\"${r.minHours ?? 12}\"></label><label>أكبر عدد ساعات<input type=\"number\" inputmode=\"numeric\" name=\"maxHours\" min=\"1\" max=\"40\" required value=\"${r.maxHours ?? 18}\"></label>${trackField}</div><button class=\"go\">اعمل الجدول</button><a class=\"back\" href=\"${e(r.webhookUrl)}\">تعديل المواد</a></form>${script}`, extra);\n  }\n  if (r.status === 'sheet_error') return simple('الشيت مش متاح', `<p>معرفتش أقرا شيت المواد. راجع رابط الملف أو مساره في إعدادات الـ workflow.</p><small>${e(r.sheetDetail || '')}</small>`);\n  if (r.status === 'not_found') return simple('الأكواد مش موجودة', `<ul>${r.unknown.map(u => `<li>${ltr(u.code)}${u.suggestions.length ? `، يمكن تقصد ${u.suggestions.map(x => ltr(x.code)).join(' أو ')}` : ''}</li>`).join('')}</ul>`);\n  if (r.status === 'need_track') return simple('اختار قسمك', `<p>المواد دي ليها مجموعات مختلفة حسب القسم: ${r.trackOptions.map(t => e(trackName(t))).join('، ')}. اختار قسمك من القايمة فوق واضغط اعمل الجدول.</p>`);\n  const b = S[0];\n  const tabCss = S.map((_, i) => `#s${i}:checked~.panels #p${i}{display:block}#s${i}:checked~.tabs label[for=s${i}]{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:500}#s${i}:focus-visible~.tabs label[for=s${i}]{outline:2px solid var(--focus)}`).join('');\n  const notes = [...(r.notes || []), ...(r.unknown || []).map(u => `${u.code} مش موجود في الشيت${u.suggestions.length ? `، يمكن تقصد ${u.suggestions.map(x => x.code).join(' أو ')}` : ''}.`), ...(r.tooMany ? ['حسبت أول 12 مادة بس.'] : [])];\n  const title = hasValid ? 'جدولك جاهز' : 'موادك فيها تعارض';\n  const lead = hasValid ? `المرشح: ${daysWord(b.m.days)} حضور، ${b.m.gap ? `وفراغ ${dur(b.m.gap)} في الأسبوع` : 'ومن غير فراغات'}.` : 'مفيش توليفة من غير تعارض، وده أقرب جدول ممكن مع طريقة الحل.';\n  const meta = `${r.found.length} مواد، ${hoursWord(r.credit.selected)} معتمدة، قسم ${trackName(r.track)}. ${hasValid ? `${r.search.truncated ? 'أكتر من ' : ''}${countWord(r.search.valid)} سليم من ${num(r.search.possible)} احتمال.` : ''}`;\n  const tabs = S.map((s, i) => `<label for=\"s${i}\">${e(s.title)}</label>`).join('');\n  const radios = S.map((_, i) => `<input class=\"rd\" type=\"radio\" name=\"tab\" id=\"s${i}\"${i ? '' : ' checked'} aria-label=\"${e(S[i].title)}\">`).join('');\n  const body = `<header>${LOGO_EL}<div><h1>${title}</h1><p class=\"lead\">${e(lead)}</p><p class=\"lead\">${e(meta)}</p></div></header>${form(codesVal)}<!--/band-->${r.credit.deferred.length ? `<div class=\"fix\"><b>موادك ${hoursWord(r.credit.total)}، وده أكتر من حدك (${r.credit.max}).</b><p>اخترنا ${hoursWord(r.credit.selected)}، وأجّلنا: ${r.credit.deferred.map(d => `${ltr(d.name)} (${hoursWord(d.hours)})`).join('، ')}.</p></div>` : ''}${radios}<nav class=\"tabs\">${tabs}</nav><div class=\"panels\">${S.map(panel).join('')}</div>${notes.length ? `<div class=\"notes\">${notes.map(n => `<p>${e(n)}</p>`).join('')}</div>` : ''}${conflictsBlock()}<footer>راجع مجموعتك في نظام التسجيل قبل التأكيد، لأن الأماكن المتاحة مش موجودة في الشيت.</footer>`;\n  return page(`${title}: ${r.found.join(' ')}`, body, tabCss);\n}\nconst page_ = html();\nconst tg = r.channel === 'telegram';\nconst hasReport = tg && r.status === 'ok';\nconst json = { channel: r.channel, status: r.status, chatId: r.chatId, messageId: r.messageId, hasReport };\nif (tg) json.telegramText = telegram(); else json.html = page_;\nif (hasReport) json.caption = hasValid ? `جدولك الكامل: ${S.length} جداول والتعارضات` : 'التعارضات وطريقة حلها';\nconst out = { json };\nif (hasReport) out.binary = { data: { data: Buffer.from(page_, 'utf8').toString('base64'), mimeType: 'text/html', fileName: `schedule-${r.found.join('-').replace(/[^\\w-]/g, '')}.html`, fileExtension: 'html' } };\nreturn [out];\n"
+      },
+      "id": "7e1c93d8-9637-4a0b-bcef-4e870255808d",
+      "name": "Build Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-0000-4000-8000-000000000027",
+              "leftValue": "={{ $json.channel }}",
+              "rightValue": "telegram",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c9057d2a-f4c1-4146-ac97-c79d7ff87241",
+      "name": "Reply Channel",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.telegramText }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML",
+          "reply_to_message_id": "={{ $json.messageId }}"
+        }
+      },
+      "id": "5aa015bd-dd8a-44af-b6fa-2d13ed4b60c4",
+      "name": "Send Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2400,
+        0
+      ],
+      "webhookId": "b66ab0a6-fc13-4e71-9603-d5ded3eebe88",
+      "credentials": {
+        "telegramApi": {
+          "id": "2ATdTD3qy3qLuLMB",
+          "name": "Telegram account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-0000-4000-8000-000000000030",
+              "leftValue": "={{ $json.hasReport }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "be73ece0-afae-46ed-a110-21ae7b131336",
+      "name": "Has Report",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ $json.caption }}"
+        }
+      },
+      "id": "0161c017-364a-43e3-94f7-cc1f7f41f298",
+      "name": "Send Report File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        160
+      ],
+      "webhookId": "b411ef81-e872-4e09-9695-98d3e9f2d613",
+      "credentials": {
+        "telegramApi": {
+          "id": "2ATdTD3qy3qLuLMB",
+          "name": "Telegram account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "468ab7b6-526b-41df-bae1-41a1645335cc",
+      "name": "Show Web Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2400,
+        384
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Page": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Sheet Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheet Source": {
+      "main": [
+        [
+          {
+            "node": "Download Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Sheet From Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Sheet": {
+      "main": [
+        [
+          {
+            "node": "Extract Excel Rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheet Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheet From Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract Excel Rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheet Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Excel Rows": {
+      "main": [
+        [
+          {
+            "node": "Clean Sheet Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheet Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Sheet Data": {
+      "main": [
+        [
+          {
+            "node": "Find Courses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheet Error": {
+      "main": [
+        [
+          {
+            "node": "Build Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Courses": {
+      "main": [
+        [
+          {
+            "node": "Generate Schedules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Schedules": {
+      "main": [
+        [
+          {
+            "node": "Rank And Recommend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank And Recommend": {
+      "main": [
+        [
+          {
+            "node": "Build Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reply": {
+      "main": [
+        [
+          {
+            "node": "Reply Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Channel": {
+      "main": [
+        [
+          {
+            "node": "Send Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Has Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Show Web Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Report": {
+      "main": [
+        [
+          {
+            "node": "Send Report File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "aab4bf90-acb4-403f-95e4-d81b86112bd5",
+  "meta": {
+    "instanceId": "010352cd959b1ba9ab13acce601dbed1910ac7116135cd4ccce48198daa23bf9"
+  },
+  "nodeGroups": [],
+  "id": "ue5snvMiCheFxv1G",
+  "tags": []
+}
